@@ -6,9 +6,8 @@ It serves as the entry point for the LLM Mock API Server.
 
 from typing import Dict
 
-from fastapi import FastAPI
-
 from app.mocks import openai_router, pinecone_router, s3_router
+from fastapi import FastAPI
 
 app = FastAPI(
     title="LLM Mock API Server",
@@ -34,6 +33,7 @@ app.include_router(pinecone_router, prefix="/pinecone", tags=["Pinecone Mock"])
 app.include_router(s3_router, prefix="/s3", tags=["S3 Mock"])
 
 from app.rag_engine import router as rag_router
+
 app.include_router(rag_router, tags=["RAG Engine"])
 
 

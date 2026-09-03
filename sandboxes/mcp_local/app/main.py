@@ -6,9 +6,8 @@ It serves as the entry point for the LLM Mock API Server.
 
 from typing import Dict
 
-from fastapi import FastAPI
-
 from app.mocks import openai_router, openai_tool_router
+from fastapi import FastAPI
 
 app = FastAPI(
     title="LLM Mock API Server",

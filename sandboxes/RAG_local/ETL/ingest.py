@@ -10,14 +10,16 @@ import sys
 from typing import List
 
 import requests
-from pypdf import PdfReader
 from openai import OpenAI
+from pypdf import PdfReader
 
 # Configuration
 MOCK_API_URL = "http://localhost:8000"
 API_KEY = "bar"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-EMBEDDING_MODEL = "nomic-embed-text"  # Use the same model as chat, or 'nomic-embed-text' if available
+EMBEDDING_MODEL = (
+    "nomic-embed-text"  # Use the same model as chat, or 'nomic-embed-text' if available
+)
 
 client = OpenAI(base_url=OLLAMA_BASE_URL, api_key="ollama")
 
@@ -31,25 +33,29 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     return text
 
 
-def recursive_chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+def recursive_chunk_text(
+    text: str, chunk_size: int = 500, overlap: int = 50
+) -> List[str]:
     """Recursive text chunking."""
     separators = ["\n\n", "\n", " ", ""]
-    
-    def _merge(splits: List[str], separator: str, chunk_size: int, overlap: int) -> List[str]:
+
+    def _merge(
+        splits: List[str], separator: str, chunk_size: int, overlap: int
+    ) -> List[str]:
         docs = []
         current_doc = []
         current_len = 0
-        
+
         for split in splits:
             split_len = len(split)
             sep_len = len(separator) if current_doc else 0
-            
+
             # If adding the next split exceeds the chunk size
             if current_len + sep_len + split_len > chunk_size:
                 if current_doc:
                     doc = separator.join(current_doc)
                     docs.append(doc)
-                    
+
                     # Handle overlap: remove from the beginning until we are under the overlap limit
                     # This is a simplified overlap strategy
                     while current_len > overlap:
@@ -59,7 +65,7 @@ def recursive_chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) ->
                         current_len -= len(removed)
                         if current_doc:
                             current_len -= len(separator)
-                    
+
                     # If after popping we are still too big (unlikely if split < chunk_size), clear
                     if current_len + sep_len + split_len > chunk_size:
                         current_doc = []
@@ -67,10 +73,10 @@ def recursive_chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) ->
 
             current_doc.append(split)
             current_len += len(split) + (len(separator) if len(current_doc) > 1 else 0)
-            
+
         if current_doc:
             docs.append(separator.join(current_doc))
-            
+
         return docs
 
     def _split_text(text: str, separators: List[str]) -> List[str]:
@@ -83,15 +89,15 @@ def recursive_chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) ->
                 break
             if s in text:
                 separator = s
-                new_separators = separators[i+1:]
+                new_separators = separators[i + 1 :]
                 break
-        
+
         # Split
         if separator:
             splits = text.split(separator)
         else:
-            splits = list(text) # Character split
-            
+            splits = list(text)  # Character split
+
         # Process splits
         good_splits = []
         for s in splits:
@@ -101,8 +107,8 @@ def recursive_chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) ->
                 if new_separators:
                     good_splits.extend(_split_text(s, new_separators))
                 else:
-                    good_splits.append(s) # Force keep if no more separators
-        
+                    good_splits.append(s)  # Force keep if no more separators
+
         # Merge
         return _merge(good_splits, separator, chunk_size, overlap)
 
@@ -118,22 +124,14 @@ def get_embedding(text: str) -> List[float]:
         print(f"Error generating embedding: {e}")
         # Return a dummy embedding if generation fails (for testing)
         # In production, you'd want to fail or retry
-        return [0.0] * 768 # nomic-embed-text dimension
+        return [0.0] * 768  # nomic-embed-text dimension
 
 
 def upsert_to_pinecone(id: str, values: List[float], metadata: dict):
     """Upsert vector to mock Pinecone API."""
     url = f"{MOCK_API_URL}/pinecone/vectors/upsert"
     headers = {"Api-Key": API_KEY, "Content-Type": "application/json"}
-    payload = {
-        "vectors": [
-            {
-                "id": id,
-                "values": values,
-                "metadata": metadata
-            }
-        ]
-    }
+    payload = {"vectors": [{"id": id, "values": values, "metadata": metadata}]}
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code != 200:
         print(f"Failed to upsert {id}: {response.text}")
@@ -152,7 +150,7 @@ def main():
 
     print(f"Extracting text from {args.pdf_path}...")
     text = extract_text_from_pdf(args.pdf_path)
-    
+
     print("Chunking text recursively...")
     chunks = recursive_chunk_text(text)
     print(f"Generated {len(chunks)} chunks.")
@@ -160,12 +158,12 @@ def main():
     for i, chunk in enumerate(chunks):
         print(f"Processing chunk {i+1}/{len(chunks)}...")
         embedding = get_embedding(chunk)
-        
+
         # Upsert
         upsert_to_pinecone(
             id=f"doc_{os.path.basename(args.pdf_path)}_{i}",
             values=embedding,
-            metadata={"text": chunk, "source": args.pdf_path}
+            metadata={"text": chunk, "source": args.pdf_path},
         )
 
     print("Ingestion complete!")

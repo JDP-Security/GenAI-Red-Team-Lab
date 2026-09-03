@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 import gradio as gr
+import requests
 import tomli
 from mirascope.v0.openai import OpenAICall, OpenAICallParams
-
-import requests
 
 # Load model configuration
 config_path = Path(__file__).parent.parent / "config" / "model.toml"

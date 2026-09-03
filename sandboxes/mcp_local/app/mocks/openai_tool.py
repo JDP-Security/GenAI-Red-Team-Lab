@@ -9,11 +9,10 @@ import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from openai import OpenAI
-from pydantic import BaseModel
-
 from mcp import ClientSession
 from mcp.client.sse import sse_client
+from openai import OpenAI
+from pydantic import BaseModel
 
 from .openai import ChatCompletionRequest, verify_api_key
 
