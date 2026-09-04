@@ -207,6 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # MacOS
-.DS_Storesandboxes/agentic_local_semantickernel/app/data/
-sandboxes/agentic_local_semantickernel/app/data/
-sandboxes/agentic_local_semantickernel/app/data/
+.DS_Store
